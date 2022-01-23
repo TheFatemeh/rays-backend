@@ -3,9 +3,11 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const app = express();
 const bcrypt = require('bcrypt');
+const cors = require('cors');
 
 app.use(express.urlencoded({ extended: false })); // To parse the body from html post form
 app.use(express.json()); // To parse the body of post/fetch request
+app.use(cors()); // Enable all CORS requests
 
 const DB_URI = process.env.DB_URI;
 const PORT = process.env.PORT || 5000;
