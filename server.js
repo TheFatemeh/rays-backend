@@ -4,12 +4,14 @@ const { MongoClient } = require('mongodb');
 const app = express();
 const bcrypt = require('bcrypt');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 
 app.use(express.urlencoded({ extended: false })); // To parse the body from html post form
 app.use(express.json()); // To parse the body of post/fetch request
 app.use(cors()); // Enable all CORS requests
 
 const DB_URI = process.env.DB_URI;
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 const PORT = process.env.PORT || 5000;
 const client = new MongoClient(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -41,9 +43,12 @@ app.post('/signup', (req, res) => {
 
                 // Insert user object
                 await collection.insertOne(user);
+                
+                // Generate token
+                const token = jwt.sign({ email: user.email });
 
                 // Send success message
-                res.status(201).json(user);
+                res.status(201).json({ ...user, token: token });
                 client.close();
             }
         })
@@ -76,3 +81,4 @@ app.get('/', (req, res) => {
 app.listen(PORT,
     console.log(`Listening on port ${PORT}...`)
 );
+
