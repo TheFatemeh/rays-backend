@@ -1,11 +1,21 @@
+require('dotenv').config();
 const express = require('express');
+const { MongoClient } = require('mongodb');
 const app = express();
 
+const DB_URI = process.env.DB_URI;
+const PORT = process.env.PORT || 5000;
+const db = new MongoClient(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+
 app.get('/', (req, res) => {
-    res.send('Hello World!');
+    db.connect(err => {
+        const collection = db.db("test").collection("devices");
+        res.send('Hello World!');
+        db.close();
+    });
 })
 
-const PORT = process.env.PORT || 5000;
 app.listen(PORT,
-    console.log(`Server started on port ${PORT}`)
+    console.log(`Listening on port ${PORT}...`)
 );
