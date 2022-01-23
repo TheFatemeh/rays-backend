@@ -13,26 +13,41 @@ const client = new MongoClient(DB_URI, { useNewUrlParser: true, useUnifiedTopolo
 
 app.post('/signup', (req, res) => {
     try {
-    client.connect(async err => {
-        if (err) throw err;
-        const collection = client.db("rays").collection("users");
+        client.connect(async err => {
+            if (err) throw err;
+            const collection = client.db("rays").collection("users");
+            
+            // Check for duplicate emails
+            const emailCount = await collection.countDocuments({email:"saeed.ahmadnia@outlook.com"})
+            if (emailCount > 0) {
+                res.status(400).json({ message: 'An account associated with this email address already exists.' });
+            }
+            // If everything was okay
+            else {
+                // Hash the password
+                const salt = await bcrypt.genSalt();
+                const hashedPassword = await bcrypt.hash(req.body.passwordField, salt);
 
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(req.body.passwordField, salt);
+                // Prepare user object
+                const user = {
+                    displayName: req.body.displayNameField,
+                    email: req.body.emailField,
+                    password: hashedPassword,
+                    userLevel: 'user',
+                    creationDate: Date.now()
+                }
 
-        const user = {
-            displayName: req.body.displayNameField,
-            email: req.body.emailField,
-            password: hashedPassword,
-            userLevel: 'user',
-            creationDate: Date.now()
-        }
-        await collection.insertOne(user);
-        res.status(201).json(user);
-        client.close();
-    })
+                // Insert user object
+                await collection.insertOne(user);
+
+                // Send success message
+                res.status(201).json(user);
+                client.close();
+            }
+        })
     } catch(err) {
         res.status(500).json({ message: 'Something went wrong. Please try again later.' });
+        console.log(err);
         client.close();
     };
 })
@@ -46,7 +61,14 @@ app.get('/', (req, res) => {
 })
 
 // app.get('/test', (req, res) => {
-// 
+//     client.connect(async err => {
+//         if (err) throw err;
+//         const collection = client.db("rays").collection("users");
+        
+//         // Send success message
+//         res.status(201).json({ message: emailCount });
+//         client.close();
+//     })
 // })
 
 app.listen(PORT,
