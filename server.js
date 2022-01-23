@@ -5,6 +5,7 @@ const app = express();
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const joi = require('joi');
 
 app.use(express.urlencoded({ extended: false })); // To parse the body from html post form
 app.use(express.json()); // To parse the body of post/fetch request
@@ -15,12 +16,29 @@ const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 const PORT = process.env.PORT || 5000;
 const client = new MongoClient(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
+const userSchema = joi.object({
+    email: joi.string().email().required(),
+    displayName: joi.string().required(),
+    password: joi.string().required(),
+    userLevel: joi.string(),
+    creationDate: joi.number().integer()
+})
+
 app.post('/signup', (req, res) => {
     try {
         client.connect(async err => {
             if (err) throw err;
             const collection = client.db("rays").collection("users");
             
+            try{
+                const validatedUser = await userSchema.validateAsync(req.body);
+            } catch(err) {
+                console.log(err);
+                res.status(500).json({ message: err.details[0].message });
+                client.close();
+                return;
+            }
+
             // Check for duplicate emails
             const emailCount = await collection.countDocuments({email:req.body.emailField.toLowerCase()})
             if (emailCount > 0) {
@@ -40,7 +58,7 @@ app.post('/signup', (req, res) => {
                     userLevel: 'user',
                     creationDate: Date.now()
                 }
-
+                
                 // Insert user object
                 await collection.insertOne(user);
                 
