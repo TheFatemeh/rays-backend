@@ -45,10 +45,15 @@ app.post('/signup', (req, res) => {
                 await collection.insertOne(user);
                 
                 // Generate token
-                const token = jwt.sign({ email: user.email });
+                const token = jwt.sign({ email: user.email }, ACCESS_TOKEN_SECRET);
 
                 // Send success message
-                res.status(201).json({ ...user, token: token });
+                res.status(201).json({
+                    displayName: user.displayName,
+                    email: user.email,
+                    userLevel: user.userLevel,
+                    token: token
+                });
                 client.close();
             }
         })
