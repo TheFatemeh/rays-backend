@@ -33,14 +33,13 @@ app.post('/signup', (req, res) => {
             try{
                 const validatedUser = await userSchema.validateAsync(req.body);
             } catch(err) {
-                console.log(err);
                 res.status(500).json({ message: err.details[0].message });
                 client.close();
                 return;
             }
 
             // Check for duplicate emails
-            const emailCount = await collection.countDocuments({email:req.body.emailField.toLowerCase()})
+            const emailCount = await collection.countDocuments({ email:req.body.emailField.toLowerCase() })
             if (emailCount > 0) {
                 res.status(400).json({ message: 'An account associated with this email address already exists.' });
             }
@@ -68,9 +67,6 @@ app.post('/signup', (req, res) => {
                 // Send success message
                 res.status(201).json({
                     id: user._id,
-                    displayName: user.displayName,
-                    email: user.email,
-                    userLevel: user.userLevel,
                     token: token
                 });
                 client.close();
@@ -78,7 +74,48 @@ app.post('/signup', (req, res) => {
         })
     } catch(err) {
         res.status(500).json({ message: 'Something went wrong. Please try again later.' });
-        console.log(err);
+        client.close();
+    };
+})
+
+app.post('/login', (req, res) => {
+    try {
+        client.connect(async err => {
+            if (err) throw err;
+            const collection = client.db("rays").collection("users");
+            
+            // Get user object emails
+            const user = await collection.findOne({ email:req.body.loginField.toLowerCase() })
+            
+            // If couldn't find the user
+            if (user === null) {
+                res.status(400).send({ message:'Wrong email address or password.' });
+                client.close();
+            }
+            
+            try {
+                // If password matches
+                if (await bcrypt.compare(req.body.passwordField, user.password)) {
+                    // Generate token
+                    const token = jwt.sign({ id: user._id }, ACCESS_TOKEN_SECRET);
+
+                    // Send success message
+                    res.status(200).json({
+                        id: user._id,
+                        token: token
+                    });
+                    client.close();
+                } else {
+                    res.status(400).send({ message:'Wrong email address or password.' });
+                    client.close();
+                }
+            } catch {
+                res.status(500).send({ message: 'Something went wrong. Please try again later.' })
+                client.close();
+            }
+        })
+    } catch(err) {
+        res.status(500).json({ message: 'Something went wrong. Please try again later.' });
         client.close();
     };
 })
