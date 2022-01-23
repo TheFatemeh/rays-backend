@@ -18,7 +18,7 @@ app.post('/signup', (req, res) => {
             const collection = client.db("rays").collection("users");
             
             // Check for duplicate emails
-            const emailCount = await collection.countDocuments({email:"saeed.ahmadnia@outlook.com"})
+            const emailCount = await collection.countDocuments({email:req.body.emailField.toLowerCase()})
             if (emailCount > 0) {
                 res.status(400).json({ message: 'An account associated with this email address already exists.' });
             }
@@ -31,7 +31,7 @@ app.post('/signup', (req, res) => {
                 // Prepare user object
                 const user = {
                     displayName: req.body.displayNameField,
-                    email: req.body.emailField,
+                    email: req.body.emailField.toLowerCase(),
                     password: hashedPassword,
                     userLevel: 'user',
                     creationDate: Date.now()
