@@ -13,6 +13,7 @@ module.exports = (req, _, next) => {
 
     try {
         decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        req.userId = decodedToken.id;
     } catch (err) {
         err.statusCode = 403;
         throw err;

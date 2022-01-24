@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const app = express();
 const bcrypt = require('bcrypt');
 const cors = require('cors');
@@ -18,9 +18,9 @@ const PORT = process.env.PORT || 5000;
 const client = new MongoClient(DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const userSchema = joi.object({
-    email: joi.string().email().required(),
-    displayName: joi.string().required(),
-    password: joi.string().required(),
+    emailField: joi.string().email().required(),
+    displayNameField: joi.string().required(),
+    passwordField: joi.string().required(),
     userLevel: joi.string(),
     creationDate: joi.number().integer()
 })
@@ -91,6 +91,7 @@ app.post('/login', (req, res) => {
             if (user === null) {
                 res.status(400).send({ message:'Wrong email address or password.' });
                 client.close();
+                return;
             }
             
             try {
@@ -105,7 +106,7 @@ app.post('/login', (req, res) => {
                     });
                     client.close();
                 } else {
-                    res.status(400).send({ message:'Wrong email address or password.' });
+                    res.status(400).send({ message: 'Wrong email address or password.' });
                     client.close();
                 }
             } catch {
@@ -119,9 +120,77 @@ app.post('/login', (req, res) => {
     };
 })
 
+app.post('/addCollection', authorization, (req, res) => {
+    try {
+        client.connect(async err => {
+
+            if (err) throw err;
+            const usersDB = client.db("rays").collection("users");
+
+            // Get user object
+            const user = await usersDB.findOne({ _id: ObjectId(req.userId) })
+
+            // If couldn't find the user or the user was not an admin
+            if (user === null || user.userLevel !== 'admin') {
+                res.status(403).send({ message: 'You don\'t have access to this section.' });
+                client.close();
+                return;
+            }
+
+            const collectionsDB = client.db("rays").collection("collections");
+            const pollsDB = client.db("rays").collection("polls");
+            const choicesDB = client.db("rays").collection("choices");
+            
+            const collection = req.body;
+
+            const pollIds = [];
+            for (const [pollKey, poll] of Object.entries(collection.polls)) {
+                
+                const choiceIds = [];
+                for (const [choiceKey, choice] of Object.entries(poll.choices)) {
+                    const choiceObject = {
+                        name: choice.name,
+                        votes: []
+                    }
+                    const choiceId = await choicesDB.insertOne(choiceObject);
+                    choiceIds.push(choiceId.insertedId);
+                }
+
+                const pollObject = {
+                    name: poll.name,
+                    colorA: poll.colorA,
+                    colorB: poll.colorB,
+                    choices: choiceIds,
+                    lastVote: {}
+                }
+                const pollId = await pollsDB.insertOne(pollObject);
+                pollIds.push(pollId.insertedId);
+            }
+            
+            const collectionObject = {
+                name: collection.name,
+                description: collection.description,
+                colorA: collection.colorA,
+                colorB: collection.colorB,
+                polls: pollIds,
+                comments: [],
+                creationDate: Date.now()
+            }
+            const collectionId = await collectionsDB.insertOne(collectionObject);
+
+            console.log(req.body);
+            res.status(201).send(collectionId);
+            client.close();
+        })
+    } catch(err) {
+        res.status(500).json({ message: 'Something went wrong. Please try again later.' });
+        client.close();
+    };
+})
+
 app.get('/', (req, res) => {
     client.connect(err => {
-        const collection = client.db("test").collection("devices");
+        // const collection = client.db("test").collection("devices");
         res.send('Hello World!');
         client.close();
     });
