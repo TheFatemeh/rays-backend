@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const joi = require('joi');
+const authorization = require('./authorization');
 
 app.use(express.urlencoded({ extended: false })); // To parse the body from html post form
 app.use(express.json()); // To parse the body of post/fetch request
@@ -66,7 +67,6 @@ app.post('/signup', (req, res) => {
 
                 // Send success message
                 res.status(201).json({
-                    id: user._id,
                     token: token
                 });
                 client.close();
@@ -84,7 +84,7 @@ app.post('/login', (req, res) => {
             if (err) throw err;
             const collection = client.db("rays").collection("users");
             
-            // Get user object emails
+            // Get user object
             const user = await collection.findOne({ email:req.body.loginField.toLowerCase() })
             
             // If couldn't find the user
@@ -101,7 +101,6 @@ app.post('/login', (req, res) => {
 
                     // Send success message
                     res.status(200).json({
-                        id: user._id,
                         token: token
                     });
                     client.close();
