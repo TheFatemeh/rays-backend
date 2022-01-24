@@ -211,6 +211,33 @@ app.get('/getCollections', (req, res) => {
     };
 })
 
+app.post('/getCollectionById', (req, res) => {
+    try {
+        client.connect(async err => {
+            if (err) throw err;
+            const collectionsDB = client.db("rays").collection("collections");
+            const pollsDB = client.db("rays").collection("polls");
+
+            // Get collection objects
+            const collection = await collectionsDB.findOne({ _id: ObjectId(req.body.collectionId) });
+
+            // Get poll objects by their IDs
+            polls = [];
+            for (var i = 0; i < collection.polls.length; i++) {
+                polls.push(await pollsDB.findOne({ _id: collection.polls[i] }, {projection: {choices: 0, lastVote: 0}}));
+            }
+            collection.polls = polls;
+
+            console.log(collection);
+            res.status(200).json(collection);
+            client.close();
+        })
+    } catch(err) {
+        res.status(500).json({ message: 'Something went wrong. Please try again later.' });
+        client.close();
+    };    
+})
+
 app.get('/', (req, res) => {
     client.connect(err => {
         // const collection = client.db("test").collection("devices");
