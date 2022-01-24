@@ -150,7 +150,7 @@ app.post('/addCollection', authorization, (req, res) => {
                 const choiceIds = [];
                 for (const [_, choice] of Object.entries(poll.choices)) {
                     const choiceObject = {
-                        name: choice.name,
+                        name: choice,
                         votes: []
                     }
                     const choiceId = await choicesDB.insertOne(choiceObject);
@@ -222,7 +222,7 @@ app.post('/getCollectionById', (req, res) => {
             const collection = await collectionsDB.findOne({ _id: ObjectId(req.body.collectionId) });
 
             // Get poll objects by their IDs
-            polls = [];
+            let polls = [];
             for (var i = 0; i < collection.polls.length; i++) {
                 polls.push(await pollsDB.findOne({ _id: collection.polls[i] }, {projection: {choices: 0, lastVote: 0}}));
             }
@@ -237,6 +237,46 @@ app.post('/getCollectionById', (req, res) => {
         client.close();
     };    
 })
+
+app.post('/getPollById', authorization, (req, res) => {
+    try {
+        client.connect(async err => {
+            if (err) throw err;
+            const pollsDB = client.db("rays").collection("polls");
+            const choicesDB = client.db("rays").collection("choices");
+
+            // Get collection objects
+            const poll = await pollsDB.findOne({ _id: ObjectId(req.body.pollId) });
+
+            // Get choice objects by their IDs
+            let choices = [];
+            for (var i = 0; i < poll.choices.length; i++) {
+                let choice = await choicesDB.findOne({ _id: poll.choices[i] });
+                choice.voteCount = choice.votes.length; // Let the user just see the number of votes, not voters
+                delete(choice.votes);
+                choices.push(choice);
+            }
+            poll.choices = choices;
+
+            // Check if user can vote (It's been more than a day since its last vote)
+            if (!poll.lastVote[req.userId] || Date.now() - poll.lastVote[req.userId] > 86400) {
+                poll.canVote = true;
+            } else {
+                poll.canVote = false;
+            }
+            delete(poll.lastVote);
+
+            console.log(poll);
+            res.status(200).json(poll);
+            client.close();
+        })
+    } catch(err) {
+        res.status(500).json({ message: 'Something went wrong. Please try again later.' });
+        client.close();
+    };    
+})
+
+
 
 app.get('/', (req, res) => {
     client.connect(err => {
