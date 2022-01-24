@@ -7,6 +7,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const joi = require('joi');
 const authorization = require('./authorization');
+const { func } = require('joi');
 
 app.use(express.urlencoded({ extended: false })); // To parse the body from html post form
 app.use(express.json()); // To parse the body of post/fetch request
@@ -144,10 +145,10 @@ app.post('/addCollection', authorization, (req, res) => {
             const collection = req.body;
 
             const pollIds = [];
-            for (const [pollKey, poll] of Object.entries(collection.polls)) {
+            for (const [_, poll] of Object.entries(collection.polls)) {
                 
                 const choiceIds = [];
-                for (const [choiceKey, choice] of Object.entries(poll.choices)) {
+                for (const [_, choice] of Object.entries(poll.choices)) {
                     const choiceObject = {
                         name: choice.name,
                         votes: []
@@ -180,6 +181,28 @@ app.post('/addCollection', authorization, (req, res) => {
 
             console.log(req.body);
             res.status(201).send(collectionId);
+            client.close();
+        })
+    } catch(err) {
+        res.status(500).json({ message: 'Something went wrong. Please try again later.' });
+        client.close();
+    };
+})
+
+
+app.get('/getCollections', (req, res) => {
+    try {
+        client.connect(async err => {
+            if (err) throw err;
+            const collectionsDB = client.db("rays").collection("collections");
+
+            // Get collection objects
+            await collectionsDB.find({}, {projection: {polls: 0, comments: 0}})
+            .sort({creationDate: -1}).limit(10).toArray((err, result) => {
+                if (err) throw err;
+                console.log(result);
+                res.status(200).json(result);
+            });
             client.close();
         })
     } catch(err) {
