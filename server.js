@@ -259,7 +259,7 @@ app.post('/getPollById', authorization, (req, res) => {
             poll.choices = choices;
 
             // Check if user can vote (It's been more than a day since its last vote)
-            if (!poll.lastVote[req.userId] || Date.now() - poll.lastVote[req.userId] > 86400) {
+            if (!poll.lastVote[req.userId] || Date.now() - poll.lastVote[req.userId] > 86400000) {
                 poll.canVote = true;
             } else {
                 poll.canVote = false;
@@ -288,7 +288,7 @@ app.post('/sendVote', authorization, (req, res) => {
             const choice = await choicesDB.findOne({ _id: ObjectId(req.body.choiceId) });
 
             // Check if user can vote (It's been more than a day since its last vote)
-            if (!poll.lastVote[req.userId] || Date.now() - poll.lastVote[req.userId] > 86400) {
+            if (!poll.lastVote[req.userId] || Date.now() - poll.lastVote[req.userId] > 86400000) {
                 const newLastVote = {...poll.lastVote};
                 newLastVote[req.userId] = Date.now();
                 await pollsDB.updateOne({_id: ObjectId(req.body.pollId)}, {$set: {lastVote: newLastVote}});
