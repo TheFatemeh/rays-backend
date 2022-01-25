@@ -7,7 +7,6 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const joi = require('joi');
 const authorization = require('./authorization');
-const { func } = require('joi');
 
 app.use(express.urlencoded({ extended: false })); // To parse the body from html post form
 app.use(express.json()); // To parse the body of post/fetch request
@@ -68,7 +67,8 @@ app.post('/signup', (req, res) => {
 
                 // Send success message
                 res.status(201).json({
-                    token: token
+                    token: token,
+                    userLevel: user.userLevel
                 });
                 client.close();
             }
@@ -103,7 +103,8 @@ app.post('/login', (req, res) => {
 
                     // Send success message
                     res.status(200).json({
-                        token: token
+                        token: token,
+                        userLevel: user.userLevel
                     });
                     client.close();
                 } else {
@@ -174,7 +175,6 @@ app.post('/addCollection', authorization, (req, res) => {
                 colorA: collection.colorA,
                 colorB: collection.colorB,
                 polls: pollIds,
-                comments: [],
                 creationDate: Date.now()
             }
             const collectionId = await collectionsDB.insertOne(collectionObject);
@@ -197,7 +197,7 @@ app.get('/getCollections', (req, res) => {
             const collectionsDB = client.db("rays").collection("collections");
 
             // Get collection objects
-            await collectionsDB.find({}, {projection: {polls: 0, comments: 0}})
+            await collectionsDB.find({}, {projection: {polls: 0}})
             .sort({creationDate: -1}).limit(10).toArray((err, result) => {
                 if (err) throw err;
                 console.log(result);
@@ -308,26 +308,6 @@ app.post('/sendVote', authorization, (req, res) => {
     };    
 })
 
-app.get('/', (req, res) => {
-    client.connect(err => {
-        // const collection = client.db("test").collection("devices");
-        res.send('Hello World!');
-        client.close();
-    });
-})
-
-// app.get('/test', (req, res) => {
-//     client.connect(async err => {
-//         if (err) throw err;
-//         const collection = client.db("rays").collection("users");
-        
-//         // Send success message
-//         res.status(201).json({ message: emailCount });
-//         client.close();
-//     })
-// })
-
 app.listen(PORT,
     console.log(`Listening on port ${PORT}...`)
 );
-
