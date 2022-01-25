@@ -276,7 +276,37 @@ app.post('/getPollById', authorization, (req, res) => {
     };    
 })
 
+app.post('/sendVote', authorization, (req, res) => {
+    try {
+        client.connect(async err => {
+            if (err) throw err;
+            const pollsDB = client.db("rays").collection("polls");
+            const choicesDB = client.db("rays").collection("choices");
 
+            // Get collection objects
+            const poll   = await   pollsDB.findOne({ _id: ObjectId(req.body.pollId) });
+            const choice = await choicesDB.findOne({ _id: ObjectId(req.body.choiceId) });
+
+            // Check if user can vote (It's been more than a day since its last vote)
+            if (!poll.lastVote[req.userId] || Date.now() - poll.lastVote[req.userId] > 86400) {
+                const newLastVote = {...poll.lastVote};
+                newLastVote[req.userId] = Date.now();
+                await pollsDB.updateOne({_id: ObjectId(req.body.pollId)}, {$set: {lastVote: newLastVote}});
+            } else {
+                res.status(400).json({ message: 'User cannot vote.' });
+                client.close();
+                return;
+            }
+            await choicesDB.updateOne({_id: ObjectId(req.body.choiceId)}, {$push: {votes: ObjectId(req.userId)}});
+
+            res.sendStatus(200);
+            client.close();
+        })
+    } catch(err) {
+        res.status(500).json({ message: 'Something went wrong. Please try again later.' });
+        client.close();
+    };    
+})
 
 app.get('/', (req, res) => {
     client.connect(err => {
