@@ -1,13 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
-const app = express();
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const joi = require('joi');
 const authorization = require('./authorization');
 
+const app = express();
 app.use(express.urlencoded({ extended: false })); // To parse the body from html post form
 app.use(express.json()); // To parse the body of post/fetch request
 app.use(cors()); // Enable all CORS requests
@@ -34,7 +34,7 @@ app.post('/signup', (req, res) => {
             try{
                 const validatedUser = await userSchema.validateAsync(req.body);
             } catch(err) {
-                res.status(500).json({ message: err.details[0].message });
+                res.status(400).json({ message: err.details[0].message });
                 client.close();
                 return;
             }
